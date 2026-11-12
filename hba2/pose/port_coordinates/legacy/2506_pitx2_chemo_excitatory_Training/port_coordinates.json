@@ -1,0 +1,60 @@
+{
+  "rig_1": {
+    "coords": [
+      [851.8, 116.8],
+      [407.5, 129.9],
+      [223.0, 517.2],
+      [438.5, 876.2],
+      [874.4, 861.6],
+      [1072.3, 469.6]
+    ],
+    "geometry": {
+      "radius_px": 430.5,
+      "radius_sd_px": 4.3,
+      "spacing_sd_deg": 1.37
+    },
+    "derived_from": {
+      "cohort": "Training",
+      "model": "Resnet50_LMDCMar11shuffle1_snapshot_091",
+      "sessions": 139,
+      "touches": 114908,
+      "touches_per_port": [46875, 17619, 8023, 13003, 17906, 11482],
+      "scatter_px": [21.2, 20.4, 27.7, 17.0, 18.8, 18.0],
+      "filters": {
+        "min_trials": 50,
+        "max_scatter_px": 30.0,
+        "max_lag_s": 0.1
+      }
+    },
+    "calibrated": "2026-10-15"
+  },
+  "rig_2": {
+    "coords": [
+      [423.3, 904.5],
+      [864.5, 896.4],
+      [1072.9, 539.8],
+      [861.7, 145.6],
+      [421.6, 159.1],
+      [211.7, 521.3]
+    ],
+    "geometry": {
+      "radius_px": 433.0,
+      "radius_sd_px": 4.0,
+      "spacing_sd_deg": 1.64
+    },
+    "derived_from": {
+      "cohort": "Training",
+      "model": "Resnet50_LMDCMar11shuffle1_snapshot_091",
+      "sessions": 156,
+      "touches": 214608,
+      "touches_per_port": [89074, 24124, 24827, 31110, 35342, 10131],
+      "scatter_px": [19.3, 13.8, 21.2, 18.9, 13.1, 20.7],
+      "filters": {
+        "min_trials": 50,
+        "max_scatter_px": 30.0,
+        "max_lag_s": 0.1
+      }
+    },
+    "calibrated": "2026-10-15"
+  }
+}

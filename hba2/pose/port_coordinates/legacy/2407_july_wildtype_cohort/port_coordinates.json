@@ -1,0 +1,60 @@
+{
+  "rig_1": {
+    "coords": [
+      [850.8, 120.8],
+      [419.1, 127.4],
+      [212.0, 511.7],
+      [432.4, 875.1],
+      [869.5, 876.2],
+      [1073.2, 479.7]
+    ],
+    "geometry": {
+      "radius_px": 433.0,
+      "radius_sd_px": 3.4,
+      "spacing_sd_deg": 0.96
+    },
+    "derived_from": {
+      "cohort": "2407_july_wildtype_cohort",
+      "model": "resnet50_DLC_Project_231212_193535_wtjx285-2a_raw_MPJan9shuffle1_800000",
+      "sessions": 87,
+      "touches": 68282,
+      "touches_per_port": [18264, 9337, 7909, 9565, 8318, 14889],
+      "scatter_px": [16.2, 13.2, 13.8, 12.9, 14.9, 16.9],
+      "filters": {
+        "min_trials": 50,
+        "max_scatter_px": 30.0,
+        "max_lag_s": 0.1
+      }
+    },
+    "calibrated": "2026-10-15"
+  },
+  "rig_2": {
+    "coords": [
+      [413.0, 875.3],
+      [839.0, 874.6],
+      [1050.0, 527.5],
+      [842.5, 138.3],
+      [420.0, 149.7],
+      [208.0, 504.0]
+    ],
+    "geometry": {
+      "radius_px": 422.1,
+      "radius_sd_px": 3.9,
+      "spacing_sd_deg": 1.44
+    },
+    "derived_from": {
+      "cohort": "2407_july_wildtype_cohort",
+      "model": "resnet50_DLC_Project_231212_193535_wtjx285-2a_raw_MPJan9shuffle1_800000",
+      "sessions": 92,
+      "touches": 180367,
+      "touches_per_port": [67962, 36670, 12234, 26429, 21674, 15398],
+      "scatter_px": [11.9, 11.2, 14.7, 13.7, 12.4, 16.2],
+      "filters": {
+        "min_trials": 50,
+        "max_scatter_px": 30.0,
+        "max_lag_s": 0.1
+      }
+    },
+    "calibrated": "2026-10-15"
+  }
+}

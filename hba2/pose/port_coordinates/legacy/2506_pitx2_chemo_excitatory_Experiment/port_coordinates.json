@@ -1,0 +1,91 @@
+{
+  "rig_1": {
+    "coords": [
+      [847.2, 116.4],
+      [406.2, 131.8],
+      [214.3, 520.5],
+      [439.8, 875.5],
+      [875.4, 861.2],
+      [1070.0, 464.7]
+    ],
+    "geometry": {
+      "radius_px": 431.0,
+      "radius_sd_px": 2.1,
+      "spacing_sd_deg": 1.48
+    },
+    "derived_from": {
+      "cohort": "Experiment",
+      "model": "Resnet50_LMDCMar11shuffle1_snapshot_091",
+      "sessions": 114,
+      "touches": 86231,
+      "touches_per_port": [21486, 15572, 9870, 14559, 13793, 10951],
+      "scatter_px": [18.7, 21.4, 21.3, 18.1, 19.8, 16.7],
+      "filters": {
+        "min_trials": 50,
+        "max_scatter_px": 30.0,
+        "max_lag_s": 0.1
+      }
+    },
+    "calibrated": "2026-10-15"
+  },
+  "rig_2": {
+    "coords": [
+      [418.2, 893.5],
+      [862.1, 896.5],
+      [1078.6, 538.3],
+      [864.8, 148.2],
+      [425.3, 156.8],
+      [219.1, 521.2]
+    ],
+    "geometry": {
+      "radius_px": 431.3,
+      "radius_sd_px": 3.7,
+      "spacing_sd_deg": 1.53
+    },
+    "derived_from": {
+      "cohort": "Experiment",
+      "model": "Resnet50_LMDCMar11shuffle1_snapshot_091",
+      "sessions": 120,
+      "touches": 100550,
+      "touches_per_port": [28897, 11442, 11327, 19266, 15313, 14305],
+      "scatter_px": [20.7, 16.3, 16.2, 18.0, 15.1, 25.0],
+      "filters": {
+        "min_trials": 50,
+        "max_scatter_px": 30.0,
+        "max_lag_s": 0.1
+      }
+    },
+    "calibrated": "2026-10-15"
+  },
+  "rig_3": {
+    "coords": [
+      [883.6, 71.9],
+      [395.1, 76.4],
+      [153.5, 501.1],
+      [405.6, 920.9],
+      [884.4, 926.0],
+      [1130.9, 491.9]
+    ],
+    "geometry": {
+      "radius_px": 488.7,
+      "radius_sd_px": 2.1,
+      "spacing_sd_deg": 0.74
+    },
+    "derived_from": {
+      "cohort": "Experiment",
+      "model": "Resnet50_LMDCMar11shuffle1_snapshot_091",
+      "sessions": 25,
+      "touches": 30309,
+      "touches_per_port": [4144, 15, 0, 8930, 9826, 7394],
+      "scatter_px": [18.2, 7.7, null, 20.0, 13.7, 16.6],
+      "filters": {
+        "min_trials": 50,
+        "max_scatter_px": 30.0,
+        "max_lag_s": 0.1
+      },
+      "filled_from_hexagon": [1, 2],
+      "filled_note": "too few touches to measure; placed by a regular hexagon fitted to the measured ports"
+    },
+    "calibrated": "2026-10-15"
+  }
+}

@@ -1,0 +1,45 @@
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "hba2"
+dynamic = ["version"]
+description = "From what the hex behaviour rig records to one table of trials"
+readme = "README.md"
+license = {text = "MIT"}
+authors = [{name = "Stefan Rogers-Coltman"}]
+requires-python = ">=3.10,<3.13"
+dependencies = [
+    "numpy",
+    "pandas",
+    "scipy",
+    "h5py",
+    "pynwb",
+    "pyarrow",
+    "opencv-python",
+    "matplotlib",
+    "pyyaml",
+]
+
+[project.optional-dependencies]
+# One DeepLabCut for every lab member's analysis. A different version can change the
+# coordinates, so moving this pin is a decision, not an upgrade.
+# tables: DeepLabCut writes its .h5 with it, but only its conda recipe installs it.
+dlc = ["deeplabcut==3.0.0rc10", "tables"]
+# Reading the 2025 Axona tetrode recordings (legacy/axona.py).
+axona = ["spikeinterface"]
+dev = ["pytest"]
+
+[project.urls]
+Repository = "https://github.com/stef1029/hex-behav-analysis-2"
+
+[tool.setuptools.dynamic]
+version = {attr = "hba2.__version__"}
+
+[tool.setuptools.packages.find]
+include = ["hba2*"]
+
+[tool.setuptools.package-data]
+# The cluster job scripts, the calibrated port table and its pictures, and the docs.
+"*" = ["*.sh", "*.json", "*.png", "*.md"]

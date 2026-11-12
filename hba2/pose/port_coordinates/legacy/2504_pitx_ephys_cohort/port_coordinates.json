@@ -1,0 +1,33 @@
+{
+  "rig_3": {
+    "coords": [
+      [853.4, 127.8],
+      [400.5, 125.3],
+      [187.8, 520.8],
+      [413.2, 905.8],
+      [874.3, 887.0],
+      [1090.5, 476.9]
+    ],
+    "geometry": {
+      "radius_px": 449.1,
+      "radius_sd_px": 6.3,
+      "spacing_sd_deg": 1.86
+    },
+    "derived_from": {
+      "cohort": "2504_pitx_ephys_cohort",
+      "model": "HrnetW32_Tetrodes_superanimalJul24shuffle1_snapshot_best-185",
+      "sessions": 73,
+      "touches": 63142,
+      "touches_per_port": [21518, 10, 0, 13899, 7516, 20199],
+      "scatter_px": [48.2, 54.0, null, 22.6, 42.4, 41.1],
+      "filters": {
+        "min_trials": 50,
+        "max_scatter_px": 60.0,
+        "max_lag_s": 0.1
+      },
+      "filled_from_hexagon": [1, 2],
+      "filled_note": "too few touches to measure; placed by a regular hexagon fitted to the measured ports"
+    },
+    "calibrated": "2026-10-15"
+  }
+}

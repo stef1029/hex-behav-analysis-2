@@ -1,0 +1,117 @@
+{
+  "rig_1": {
+    "coords": [
+      [842.8, 117.8],
+      [436.6, 131.1],
+      [253.9, 484.5],
+      [463.7, 835.6],
+      [863.8, 820.8],
+      [1055.1, 455.9]
+    ],
+    "geometry": {
+      "radius_px": 404.1,
+      "radius_sd_px": 2.8,
+      "spacing_sd_deg": 0.88
+    },
+    "derived_from": {
+      "cohort": "2603_optoinhibit",
+      "model": "260527_array_mice_behav",
+      "sessions": 98,
+      "touches": 228483,
+      "touches_per_port": [53843, 14668, 8507, 41858, 73090, 36517],
+      "scatter_px": [14.0, 17.5, 20.0, 13.4, 14.7, 15.0],
+      "filters": {
+        "min_trials": 50,
+        "max_scatter_px": 30.0
+      }
+    },
+    "calibrated": "2026-09-16"
+  },
+  "rig_2": {
+    "coords": [
+      [811.5, 118.2],
+      [402.4, 144.3],
+      [228.2, 506.3],
+      [443.9, 846.5],
+      [848.1, 821.7],
+      [1028.9, 455.3]
+    ],
+    "geometry": {
+      "radius_px": 404.8,
+      "radius_sd_px": 2.9,
+      "spacing_sd_deg": 0.49
+    },
+    "derived_from": {
+      "cohort": "2603_optoinhibit",
+      "model": "260527_array_mice_behav",
+      "sessions": 101,
+      "touches": 103429,
+      "touches_per_port": [21269, 11275, 6729, 11757, 35842, 16557],
+      "scatter_px": [18.5, 17.7, 19.2, 15.0, 14.7, 18.3],
+      "filters": {
+        "min_trials": 50,
+        "max_scatter_px": 30.0
+      }
+    },
+    "calibrated": "2026-09-16"
+  },
+  "rig_3": {
+    "coords": [
+      [827.9, 161.1],
+      [419.2, 172.9],
+      [231.4, 521.2],
+      [441.8, 860.3],
+      [844.9, 849.2],
+      [1036.2, 501.0]
+    ],
+    "geometry": {
+      "radius_px": 400.5,
+      "radius_sd_px": 1.6,
+      "spacing_sd_deg": 0.83
+    },
+    "derived_from": {
+      "cohort": "2603_optoinhibit",
+      "model": "260527_array_mice_behav",
+      "sessions": 49,
+      "touches": 42844,
+      "touches_per_port": [9300, 5182, 5022, 5096, 7607, 10637],
+      "scatter_px": [15.8, 15.5, 14.9, 12.4, 14.8, 18.0],
+      "filters": {
+        "min_trials": 50,
+        "max_scatter_px": 30.0
+      }
+    },
+    "calibrated": "2026-09-16"
+  },
+  "rig_4": {
+    "coords": [
+      [826.9, 127.0],
+      [443.0, 126.6],
+      [239.8, 474.6],
+      [445.3, 821.3],
+      [854.1, 819.7],
+      [1044.6, 475.2]
+    ],
+    "geometry": {
+      "radius_px": 400.5,
+      "radius_sd_px": 3.8,
+      "spacing_sd_deg": 1.49
+    },
+    "derived_from": {
+      "cohort": "2603_ephys",
+      "model": "ephys_mice_nonrecoverable",
+      "sessions": 20,
+      "touches": 12411,
+      "touches_per_port": [2215, 1903, 2004, 1268, 2685, 2336],
+      "scatter_px": [17.6, 19.6, 16.6, 22.0, 17.2, 18.0],
+      "filters": {
+        "min_trials": 50,
+        "max_scatter_px": 30.0,
+        "max_lag_s": 0.1,
+        "sessions_from": "260601"
+      },
+      "note": "June 2026 sessions only: the rig 4 camera drifted through late May 2026 (port 0 ~26 px, port 5 ~24 px) and was stable from ~2026-06-09. Rig 4 sessions before June are measured against these ports and their angles can be off by a few degrees."
+    },
+    "calibrated": "2026-10-12"
+  }
+}
