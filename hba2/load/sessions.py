@@ -4,10 +4,15 @@ From a cohort to the trials of the sessions you picked.
 
 The step between "which sessions do I want" and "plot this"::
 
-    from hba2 import load_sessions
+    from hba2 import Cohort, load_sessions
 
+    cohort = Cohort("/path/to/cohort", batch="2026-10_v1")
     trials = load_sessions(cohort, include=True, stim_position="all",
                            laser_window="-400..-395")
+
+**The cohort says which batch.** ``load_sessions`` takes a :class:`Cohort`, never a
+path, and reads the batch that cohort was built with, so the files a figure came from
+are named in one place.
 
 Per-frame data — where the head was through a trial — is a separate call,
 :func:`load_frames`, because it is a hundred times the size and most plots never touch it.
@@ -155,17 +160,16 @@ def _typed(value):
     return value
 
 
-def load_sessions(cohort, *, batch=None, where=None, only=None, labels="index",
-                  log_fn=None, **filters):
+def load_sessions(cohort, *, where=None, only=None, labels="index", log_fn=None,
+                  **filters):
     """
     The sessions you asked for, as every trial in them.
 
     Args:
-        cohort: a :class:`Cohort`, or a path (Path or string) to build one from.
-        batch: which batch's files to read, from ``<session>/nwb/<batch>/`` — the ones
-            with units in, for :func:`~.spikes.load_units` and ``load_spikes``. Left
-            out, it is the cohort's own batch: the one named in ``Cohort(path,
-            batch=...)``, or else the newest.
+        cohort: a :class:`Cohort`. Its batch is the one read, from
+            ``<session>/nwb/<batch>/``: the one named in ``Cohort(path, batch=...)``,
+            or else the newest. A path is refused, so the batch is always chosen where
+            the cohort is made.
         **filters: how sessions are chosen — a column of ``sessions.csv`` and what it
             must hold, in the same vocabulary ``qc_trials`` uses::
 
@@ -197,17 +201,17 @@ def load_sessions(cohort, *, batch=None, where=None, only=None, labels="index",
     """
     log = log_fn or _say_nothing
     if not isinstance(cohort, Cohort):
-        cohort = Cohort(cohort, batch=batch)
+        raise TypeError(f"load_sessions takes a Cohort, not {type(cohort).__name__}: "
+                        "Cohort(path, batch=...)")
+    if "batch" in filters:
+        # Would otherwise be taken as a sessions.csv column to filter by.
+        raise TypeError("the batch is set on the Cohort: Cohort(path, batch=...)")
 
-    # ---- 1. Which batch: the one asked for, or the cohort's own ----------
-    if batch is None:
-        batch = cohort.batch
+    # ---- 1. Which batch: the cohort's own -------------------------------
+    batch = cohort.batch
     if batch is None:
         raise ValueError(f"{cohort.base.name} has no NWB batch yet — run build_nwb "
                          "with --batch")
-    if batch not in cohort.batches:
-        raise ValueError(f"no batch {batch!r} in {cohort.base.name}. "
-                         f"Batches: {', '.join(cohort.batches) or 'none'}")
 
     # ---- 2. Which sessions ----------------------------------------------
     # Nothing given means every session that has a file; each of the three ways of

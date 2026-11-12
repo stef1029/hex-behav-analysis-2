@@ -6,7 +6,7 @@ The batch NWB files hold a curation's good units beside the behaviour, on one cl
 calls read them, both taking a :func:`~.sessions.load_sessions` table the way
 :func:`~.sessions.load_frames` does::
 
-    trials = load_sessions(cohort, batch="2026-10_first_ephys")
+    trials = load_sessions(Cohort(path, batch="2026-10_first_ephys"))
     units  = load_units(trials)                       # one row per unit per session
     spikes = load_spikes(trials, before=0.5, after=1.0, align="start_time")
     rates  = bin_trials(trials, units, until="t_response")   # every neuron x trial, binned

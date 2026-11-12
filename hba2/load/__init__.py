@@ -5,9 +5,10 @@ From the NWB files to one table of trials.
 The hand-off point of the package: everything before this builds the files, everything
 after it is yours. A notebook starts the same way every time::
 
-    from hba2 import load_sessions, qc_trials
+    from hba2 import Cohort, load_sessions, qc_trials
 
-    trials = load_sessions("/path/to/cohort", include=True)
+    cohort = Cohort("/path/to/cohort", batch="2026-10_v1")
+    trials = load_sessions(cohort, include=True)
     trials = qc_trials(trials, min_ear_likelihood=0.6, max_abs_frame_lag_s=0.1)
 
 One row per trial, every session stacked, your ``sessions.csv`` labels as columns.

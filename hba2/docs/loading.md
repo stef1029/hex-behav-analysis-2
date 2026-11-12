@@ -6,9 +6,10 @@ package-specific left. It is a DataFrame, and you filter, group and plot it howe
 like.
 
 ```python
-from hba2 import load_sessions, qc_trials
+from hba2 import Cohort, load_sessions, qc_trials
 
-trials = load_sessions("/path/to/cohort", include=True, stim_position="all")
+cohort = Cohort("/path/to/cohort", batch="2026-10_v1")
+trials = load_sessions(cohort, include=True, stim_position="all")
 trials = qc_trials(trials, min_ear_likelihood=0.6, max_abs_frame_lag_s=0.1)
 ```
 
@@ -24,8 +25,8 @@ Everything here imports from the top-level package, `from hba2 import ...`:
 ## `load_sessions`: the trials
 
 ```python
-trials = load_sessions(cohort,                 # a folder path or a Cohort
-                       batch=None,             # None: the newest NWB batch
+cohort = Cohort(path, batch="2026-10_v1")     # batch=None: the newest NWB batch
+trials = load_sessions(cohort,                 # a Cohort, never a path
                        where=None,             # a pandas query on sessions.csv, for an "or"
                        only=None,              # a tuple of session IDs
                        labels="index",         # or "snapshot": the labels stored in each file
@@ -33,6 +34,9 @@ trials = load_sessions(cohort,                 # a folder path or a Cohort
                        **filters)              # columns of sessions.csv; see "rules" below
 ```
 
+- **The batch comes from the cohort.** `load_sessions` reads the batch its `Cohort`
+  was made with, and refuses a path or a `batch=`. So which files a figure came from
+  is set in one place, where the cohort is made.
 - **Picking sessions.** Sessions are picked by the columns of `sessions.csv`, using the
   same rule vocabulary as QC. A column can be named by a short alias (`mouse`, `date`,
   `rig`, `protocol`, `laser_window`, `video_usable`, `cue_duration`, …), by its own name
@@ -156,9 +160,9 @@ frames = load_frames(trials.head(12), before=0.5, after=0.5, port_angles=False)
 These need an NWB batch built with a sort and a curation.
 
 ```python
-from hba2 import load_sessions, load_units, load_spikes, bin_trials
+from hba2 import Cohort, load_sessions, load_units, load_spikes, bin_trials
 
-trials = load_sessions(cohort, batch="2026-10_v1")
+trials = load_sessions(Cohort(path, batch="2026-10_v1"))
 units  = load_units(trials, cell_type="narrow")      # one row per unit per session
 spikes = load_spikes(trials, before=0.5, after=1.0, align="start_time", units=units)
 rates  = bin_trials(trials, units, until="t_response")   # every neuron x trial, binned

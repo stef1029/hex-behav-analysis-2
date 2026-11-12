@@ -29,7 +29,8 @@ where a file lives can break the rigs. The rigs' cluster jobs run the scripts in
 **Start every analysis from the trials table.**
 
 ```python
-from hba2 import load_sessions, qc_trials
+from hba2 import Cohort, load_sessions, qc_trials
+cohort = Cohort(path, batch="2026-10_v1")      # the batch is chosen here, once
 trials = qc_trials(load_sessions(cohort, include=True), min_ear_likelihood=0.6)
 ```
 

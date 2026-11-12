@@ -24,10 +24,10 @@ uv pip install -e ".[dlc]" --torch-backend=cu128     # plus DeepLabCut, for the 
 tagged release (`git checkout v0.4.0`) pins the rest.
 
 ```python
-from hba2 import load_sessions, qc_trials
+from hba2 import Cohort, load_sessions, qc_trials
 
-trials = qc_trials(load_sessions("/path/to/cohort", include=True),
-                   min_ear_likelihood=0.6)
+cohort = Cohort("/path/to/cohort", batch="2026-10_v1")
+trials = qc_trials(load_sessions(cohort, include=True), min_ear_likelihood=0.6)
 ```
 
 ## Where this comes from

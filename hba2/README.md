@@ -12,9 +12,10 @@ on top.
 ## Starting a notebook
 
 ```python
-from hba2 import load_sessions, qc_trials
+from hba2 import Cohort, load_sessions, qc_trials
 
-trials = load_sessions("/path/to/cohort", include=True)
+cohort = Cohort("/path/to/cohort", batch="2026-10_v1")   # which NWB batch to read
+trials = load_sessions(cohort, include=True)
 trials = qc_trials(trials, min_ear_likelihood=0.6, max_abs_frame_lag_s=0.1)
 
 kept = trials[trials["keep"] == 1]
