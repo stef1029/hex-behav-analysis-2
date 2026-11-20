@@ -43,6 +43,7 @@ Stages, each a subcommand::
 from __future__ import annotations
 
 import argparse
+import functools
 import json
 import sys
 from pathlib import Path
@@ -528,9 +529,26 @@ def fit_one(args):
     return fit
 
 
-def rig_of(sid):
-    """Which red rig a session ran on, from its mouse."""
-    return {"W1": 1, "W3": 1}.get(sid.rsplit("_", 1)[1], 2)
+@functools.lru_cache(maxsize=None)
+def _rig(base, sid):
+    folder = session_paths(Path(base), sid)["folder"]
+    meta = folder / f"{sid}-metadata.json"
+    if meta.exists():
+        number = (json.loads(meta.read_text()).get("rig") or {}).get("number")
+        if number is not None:
+            return int(number)
+    for log in folder.glob("daq_rig*.log"):
+        return int(log.stem.removeprefix("daq_rig"))
+    raise ValueError(f"{sid}: no rig in its metadata and no daq_rig<N>.log beside it")
+
+
+def rig_of(base, sid):
+    """
+    Which rig a session ran on (``base`` the cohort folder, a Path or a string), from
+    its own files: the metadata's ``rig.number``, else the DAQ log the rig wrote beside
+    it (``daq_rig1.log``). Never from the mouse, since mice move between rigs.
+    """
+    return _rig(str(base), sid)
 
 
 def learn(base, sessions, workers=8):
@@ -546,7 +564,7 @@ def rig_weights(sessions, base, rig, kind, leave_out=None):
     import warnings
     suffix, _, brighten = KINDS[kind]
     paths = [base / WORK / "maps" / f"{sid}{suffix}.npy" for sid in sessions
-             if rig_of(sid) == rig and sid != leave_out]
+             if rig_of(base, sid) == rig and sid != leave_out]
     maps = [np.load(p) for p in paths if p.exists()]
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", RuntimeWarning)     # a port no session saw
@@ -580,12 +598,12 @@ def validate(base, sessions, workers=8, log=print):
     ids = list(good)
     rates = {}
     for rig in (1, 2):
-        if any(rig_of(s) == rig for s in good):
-            rates[rig] = float(np.median([r["fps"] for s, r in good.items() if rig_of(s) == rig]))
+        if any(rig_of(base, s) == rig for s in good):
+            rates[rig] = float(np.median([r["fps"] for s, r in good.items() if rig_of(base, s) == rig]))
     prior = float(np.median([r["t0_true"] for r in good.values()]))
     log(f"learned {len(good)} session(s); rates {rates}; usual t0 {prior:.3f} s")
     _draw_hotspots(base, good, report / "hotspots.png")
-    jobs = [(str(base), s, all_weights(ids, base, rig_of(s), leave_out=s), rates[rig_of(s)],
+    jobs = [(str(base), s, all_weights(ids, base, rig_of(base, s), leave_out=s), rates[rig_of(base, s)],
              prior) for s in good]
     with ProcessPoolExecutor(workers) as pool:
         fits = {f["session"]: f for f in pool.map(fit_one, jobs)}
@@ -593,7 +611,7 @@ def validate(base, sessions, workers=8, log=print):
     rows = []
     for sid, f in fits.items():
         row = {k: v for k, v in f.items() if k not in ("score", "curves", "t_first", "breaks")}
-        row.update(t0_true=good[sid]["t0_true"], rig=rig_of(sid))
+        row.update(t0_true=good[sid]["t0_true"], rig=rig_of(base, sid))
         for m, col in METHODS.items():
             row[f"{m}_raw_ms"] = (f[col] - row["t0_true"]) * 1000 if f.get("ok") else np.nan
         rows.append(row)
@@ -642,7 +660,7 @@ def _draw_hotspots(base, good, path):
     colours = ["#e6194b", "#3cb44b", "#ffe119", "#4363d8", "#f58231", "#911eb4"]
     fig, axes = plt.subplots(2, 3, figsize=(15, 8))
     for row, rig in enumerate((1, 2)):
-        ses = [s for s in good if rig_of(s) == rig]
+        ses = [s for s in good if rig_of(base, s) == rig]
         if not ses:
             continue
         mean = np.mean([good[s]["mean_frame"] for s in ses], axis=0)
@@ -837,15 +855,15 @@ def fit_cohort(base, sessions, workers=8, apply=False, method=None, log=print):
     weights = {rig: all_weights(model["sessions"], base, rig) for rig in (1, 2)}
     chosen = {int(k): v for k, v in model["method"].items()}
     chosen.update(method or {})
-    jobs = [(str(base), s, weights[rig_of(s)], model["rates"][str(rig_of(s))],
-             model["prior_t0"], chosen[rig_of(s)], model["latency_ms"][str(rig_of(s))])
+    jobs = [(str(base), s, weights[rig_of(base, s)], model["rates"][str(rig_of(base, s))],
+             model["prior_t0"], chosen[rig_of(base, s)], model["latency_ms"][str(rig_of(base, s))])
             for s in sessions]
     with ProcessPoolExecutor(workers) as pool:
         fits = list(pool.map(fit_unplaced, jobs))
     for f in fits:
         if f.get("ok"):
             _draw_fit(f, report / f"{f['session']}.png",
-                      latency=model["latency_ms"][str(rig_of(f["session"]))],
+                      latency=model["latency_ms"][str(rig_of(base, f["session"]))],
                       chosen=f["method"])
             if apply and f["accepted"]:
                 apply_times(base, f)
@@ -1004,7 +1022,7 @@ def occlusion_one(args):
         if last["occ_ok"] and (best is None or last["occ_peak"] > best["occ_peak"]):
             best = last
     best = best or last
-    best.update(session=sid, rig=rig_of(sid), rate=rate, centre=centre,
+    best.update(session=sid, rig=rig_of(base, sid), rate=rate, centre=centre,
                 n_dlc=len(table), n_tracker=len(ids), chunked=len(tries) > 1,
                 head_seen=float((table["head"]["likelihood"] >= MIN_LIKELIHOOD).mean()))
     return best
@@ -1031,7 +1049,7 @@ def validate_occlusion(base, workers=8, log=print):
         if tt is None or dlc_csv(p["folder"]) is None:
             continue
         truth[sid] = tt[0]
-        jobs.append((str(base), sid, model["rates"][str(rig_of(sid))], tt[0], None))
+        jobs.append((str(base), sid, model["rates"][str(rig_of(base, sid))], tt[0], None))
     with ProcessPoolExecutor(workers) as pool:
         fits = list(pool.map(occlusion_one, jobs))
     rows = []
@@ -1098,14 +1116,14 @@ def fit_occlusion_cohort(base, workers=8, apply=False, log=print):
     model = json.loads((base / WORK / "video_clock_model.json").read_text())
     bright = pd.read_csv(report / "fits_brightness.csv")
     bright = bright[bright.ok.astype(bool)]
-    jobs = [(str(base), r.session, model["rates"][str(rig_of(r.session))], r.t0_coarse,
+    jobs = [(str(base), r.session, model["rates"][str(rig_of(base, r.session))], r.t0_coarse,
              CORES_TRIED if r.n_movie < r.n_tracker else None) for r in bright.itertuples()]
     with ProcessPoolExecutor(workers) as pool:
         fits = list(pool.map(occlusion_one, jobs))
     rows = []
     for f, job in zip(fits, jobs):
         if f.get("occ_ok"):
-            latency = model["occlusion_latency_ms"][str(rig_of(f["session"]))] / 1000
+            latency = model["occlusion_latency_ms"][str(rig_of(base, f["session"]))] / 1000
             f["t0"] = f["occ_t0"] - latency
             f["latency_ms"] = latency * 1000
             f["vs_brightness_s"] = f["t0"] - job[3]

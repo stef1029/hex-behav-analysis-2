@@ -10,9 +10,10 @@ Writes three files into the curation's folder:
 ``units.csv`` — one row per good unit:
 
     unit_id               Phy's cluster ID — the name Phy, the sorter and UnitMatch all use
-    shank                 0-7, from the peak channel
-    peak_channel          Phy's channel index (0-127) carrying the largest waveform
-    open_ephys_channel    which recorded channel that is (CH1..CH128)
+    shank                 the probe shank, from the peak channel
+    peak_channel          Phy's channel index carrying the largest waveform
+    open_ephys_channel    which recorded channel that is: CH1..CH128 for an Open Ephys
+                          recording, SpikeGLX's channel name for a Neuropixels one
     x_um, depth_um        the peak channel's position on the probe
     n_spikes              spikes with a DAQ time
     firing_rate_hz        n_spikes / (obs_stop - obs_start)
@@ -27,7 +28,9 @@ Writes three files into the curation's folder:
 
 ``spikes.parquet`` — one row per spike of a good unit, by time: ``unit_id``, ``sample``
 (the recording's own sample number), ``t_ephys`` and ``t_daq`` (s; NaN where the DAQ was
-not running).
+not running). ``t_ephys`` is Open Ephys's ``timestamps.npy`` at that sample, or for
+SpikeGLX the sample over the probe's calibrated rate — the clock ``ephys_sync.csv`` is on
+either way.
 
 ``waveforms.npz`` — ``unit_id``, ``waveform`` (units x samples, µV, peak channel),
 ``n_waveforms`` (how many spikes each mean is over) and ``sample_rate``. Taken from the
@@ -111,21 +114,34 @@ def export(record, sort, curation):
             raise ValueError(f"the sort is of recording #{sorted_index} but the sync is "
                              f"of #{synced_index}")
 
-    clock = np.load(Path(sync_record["recording"]["continuous"]).parent / "timestamps.npy",
-                    mmap_mode="r")
-    if len(samples) and samples[-1] >= len(clock):
+    # A sample's ephys time: Open Ephys keeps a clock file, one time per sample; a
+    # SpikeGLX probe file starts at 0 and runs at its calibrated rate.
+    recorded = sync_record["recording"]
+    spikeglx = recorded.get("system") == "spikeglx"
+    if spikeglx:
+        n_recorded = int(recorded["n_samples"])
+    else:
+        clock = np.load(Path(recorded["continuous"]).parent / "timestamps.npy", mmap_mode="r")
+        n_recorded = len(clock)
+    if len(samples) and samples[-1] >= n_recorded:
         raise ValueError(f"spike at sample {samples[-1]} but the recording has "
-                         f"{len(clock)} samples — the sort is of a different recording")
+                         f"{n_recorded} samples — the sort is of a different recording")
+    if spikeglx:
+        rate = float(recorded["sample_rate"])
+        t_ephys = samples / rate
+        clock_first, clock_last = 0.0, (n_recorded - 1) / rate
+    else:
+        t_ephys = np.asarray(clock[samples], dtype=np.float64)
+        clock_first, clock_last = float(clock[0]), float(clock[-1])
     sync = pd.read_csv(sync_csv)
     rows_e, rows_d = sync["t_ephys"].to_numpy(), sync["t_daq"].to_numpy()
-    t_ephys = np.asarray(clock[samples], dtype=np.float64)
     t_daq = ephys_to_daq(t_ephys, rows_e, rows_d)
 
     # The stretch of DAQ time the probe covered: the recording, cut to what the sync
     # reaches. The same for every unit — whether a unit fired throughout it is
     # presence_ratio's question, not this one's.
-    first = max(float(clock[0]), rows_e[0] - EPHYS_REACH_S)
-    last = min(float(clock[-1]), rows_e[-1] + EPHYS_REACH_S)
+    first = max(clock_first, rows_e[0] - EPHYS_REACH_S)
+    last = min(clock_last, rows_e[-1] + EPHYS_REACH_S)
     obs_start, obs_stop = (float(t) for t in ephys_to_daq(np.array([first, last]),
                                                           rows_e, rows_d))
 

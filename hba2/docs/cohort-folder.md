@@ -17,12 +17,14 @@ path derives from it, so moving a cohort changes one line and nothing stores its
     │   ├── dlc/<model>/        DeepLabCut's output, and the pose files built from it
     │   ├── nwb/<batch>/        <session>.nwb and its build record, one folder per batch
     │   └── ephys_sorts/<sort>/ a spike sort, and the curations frozen from it
-    └── ephys/<Rig_mouse>/      raw Open Ephys, one subfolder per session
+    └── ephys/<..._mouse>/      raw ephys, one subfolder per session: Rig<n>_<mouse> for
+                                Open Ephys, <session> for SpikeGLX (Neuropixels)
 ```
 
 - **Sessions are grouped by when they started.** The rigs start concurrent sessions
   together, so each group folder holds the mice that ran at the same time. Raw ephys sits
-  at group level because one Open Ephys recording covers them all.
+  at group level because one recording covers them all. Each session's subfolder is
+  found by its `_<mouse>` ending.
 - **Everything about a session lives inside its own folder.** Copy the folder and its
   derived data comes with it. Only the cohort-wide tables and batch recipes sit at the
   top.

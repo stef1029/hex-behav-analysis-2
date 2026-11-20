@@ -55,9 +55,10 @@ lists the files column by column.
   short script per cohort that calls it with that cohort's path.
 - **Options.** `only=(...)` limits it to some sessions. `reprocess=True` redoes sessions
   that already have output.
-- **Ephys cohorts.** It also writes `ephys_sync.csv`, which maps the Open Ephys clock
-  onto the DAQ's. That means one pass over a recording of about 60 GB, so it is done
-  only when the file is missing. `sync_ephys(record)` redoes it on its own.
+- **Ephys cohorts.** It also writes `ephys_sync.csv`, which maps the probe's clock onto
+  the DAQ's, for an Open Ephys or a SpikeGLX (Neuropixels) recording alike. That means one
+  pass over a recording of about 60-80 GB an hour, so it is done only when the file is
+  missing. `sync_ephys(record)` redoes it on its own.
 
 ## 2. DeepLabCut and pose: where the head was
 
@@ -180,13 +181,13 @@ was recorded or converted wrongly. Each repair:
 
 | repair | for |
 |---|---|
-| `repair_video_timing.py` | videos compressed by the old bin→avi converter, whose frames were paired with the wrong times. Run it after every post-processing run on such a cohort |
+| `repair_video_timing.py` | videos compressed by the old bin→avi converter, whose frames were paired with the wrong times, including videos whose converter chunks were never written. Run it after every post-processing run on such a cohort |
 | `repair_video_offset.py` | sessions whose video sits a constant 0.1–5 s from the DAQ clock (some pre-2026 recordings). Run it after `repair_video_timing` |
 | `repair_video_clock.py` | sessions whose camera never reached the DAQ, so frames have no pulses to count |
 | `repair_scales_timing.py` | rigs whose scales were never wired to the DAQ |
 | `repair_mouse_id.py` | legacy sessions whose typed mouse ID was wrong |
 
-Each one's docstring explains what went wrong, how the fix was validated, and the
+[Known faults](known-faults.md) indexes these and the other fixes by symptom. Each one's docstring explains what went wrong, how the fix was validated, and the
 command to run. After a repair, rebuild the session's NWB files, normally into a new
 batch.
 

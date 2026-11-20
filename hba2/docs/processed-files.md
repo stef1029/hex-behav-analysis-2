@@ -157,4 +157,11 @@ two rows maps onto the straight line between them.
 - **A mapping, not a conversion.** Behaviour stays on the DAQ clock. Spikes are brought
   onto it when a curation is exported.
 - **What the JSON records.** Where the pulses were read from, and how closely the two
-  clocks agreed.
+  clocks agreed. `recording.system` is `open_ephys` or `spikeglx`.
+- **SpikeGLX.** The rig's pulses are recorded on the NI card, so they are first carried
+  onto the probe's clock through SpikeGLX's 1 Hz sync, recorded by both (the NI channel
+  `spikeglx_session.json` names, and bit 6 of the probe's SY word). `alignment` in the
+  JSON says how: edges paired, the probe's rate against the NI card's, and how far the
+  edges sit from that line. `t_ephys` is then probe seconds from the start of its
+  `.ap.bin`, so a spike's time is its sample over the probe's rate. A recording made with
+  SpikeGLX's sync off is refused, as is a DAQ that does not pulse on every loop.

@@ -11,7 +11,8 @@ clock; spikes come onto the DAQ's when a curation is exported, and nothing else 
 needs to.
 
 ``ephys_sync.json`` beside it says where the pulses were read from and how cleanly the
-two clocks agreed, because the CSV alone cannot.
+two clocks agreed, because the CSV alone cannot. For SpikeGLX it also says how the NI
+card's clock, which the rig's pulses are recorded on, was carried onto the probe's.
 """
 
 from __future__ import annotations
@@ -48,7 +49,7 @@ def write(out_dir, recording, pulses, mapping, source="recording"):
             for p, e, d, n in zip(mapping.pulse, mapping.t_ephys, mapping.t_daq,
                                   mapping.n_messages))
 
-    warnings = []
+    warnings = list(getattr(pulses, "warnings", ()))
     if recording.n_recordings > 1:
         warnings.append(f"ephys folder holds {recording.n_recordings} recordings; "
                         f"synced #{recording.index} only")
@@ -70,6 +71,7 @@ def write(out_dir, recording, pulses, mapping, source="recording"):
 
     record = {
         "recording": {
+            "system": getattr(recording, "system", "open_ephys"),
             "directory": str(recording.directory),
             "continuous": str(recording.continuous),
             "stream": recording.stream,
@@ -98,6 +100,8 @@ def write(out_dir, recording, pulses, mapping, source="recording"):
         },
         "warnings": warnings,
     }
+    if getattr(pulses, "alignment", None):
+        record["alignment"] = pulses.alignment
     (out_dir / "ephys_sync.json").write_text(json.dumps(record, indent=2),
                                              encoding="utf-8")
 

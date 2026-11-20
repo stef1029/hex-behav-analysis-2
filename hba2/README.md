@@ -29,7 +29,7 @@ kept.groupby(["mouse_id", "laser_stim"])["correct"].mean()
   prints what each rule cost.
 
 [Loading data](docs/loading.md) has the rest, and
-[The NWB files](docs/nwb-files.md#the-trials-table) lists every column.
+[The trials table](docs/trials-table.md) lists every column.
 
 ## What it does, in order
 
@@ -77,9 +77,12 @@ hba2/
   label tables
 - [The processed files](docs/processed-files.md): what post-processing writes, column by
   column
-- [The NWB files](docs/nwb-files.md): batches, what is inside a file, and the trials
-  table's columns
+- [The NWB files](docs/nwb-files.md): batches, and what is inside a file
 - [Loading data](docs/loading.md): `load_sessions`, QC, events, notes, frames and spikes
+- [The trials table](docs/trials-table.md): every column `load_sessions` returns, with its
+  type and what missing looks like
+- [Known faults](docs/known-faults.md): symptoms seen in real cohorts, their causes, and
+  which repair fixes each
 - [pose/README.md](pose/README.md): DeepLabCut and the head-angle stage in detail
 - [ephys/\_\_init\_\_.py](ephys/__init__.py): the ephys layers, and
   [ephys/TOOLS.md](ephys/TOOLS.md) for other labs' tools that read these files

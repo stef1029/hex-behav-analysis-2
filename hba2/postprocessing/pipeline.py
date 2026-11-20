@@ -36,7 +36,7 @@ import numpy as np
 
 from . import outputs
 from ..cohort import Cohort, SessionRecord
-from .sources import blocks, camera, daq, metadata, openephys, scales, trials_csv
+from .sources import blocks, camera, daq, metadata, openephys, scales, spikeglx, trials_csv
 from .utils import clock
 
 # What each DAQ channel is for. The DAQ records the same 24 channels with the same
@@ -315,10 +315,16 @@ def sync_ephys(record, out_dir=None, recording_index=0, use_cached=True, daq_dat
     only the ephys needs (re)doing, and it reads the DAQ itself. Raises rather than
     returning a result — called on its own, a failure is the answer.
 
+    Open Ephys and SpikeGLX recordings both end as the same ``ephys_sync.csv``: probe
+    seconds against DAQ seconds. Which one this is, the ephys folder says
+    (:func:`~.sources.spikeglx.is_spikeglx`). For SpikeGLX, ``recording_index`` picks
+    the probe.
+
     ``use_cached``: take the pulses from the previous pipeline's
     ``*_ephys_sync_timestamps.h5`` where one sits beside the raw files and checks out
     (:func:`~.sources.openephys.cached_pulses`) — seconds rather than minutes. Anything
     wrong with it falls back to reading the recording; ``ephys_sync.json`` says which.
+    Open Ephys only.
     """
     if record.ephys is None:
         raise FileNotFoundError(f"{record.session_id} has no ephys recording")
@@ -329,24 +335,50 @@ def sync_ephys(record, out_dir=None, recording_index=0, use_cached=True, daq_dat
     if daq_data is None:
         daq_data = daq.read(record.path("daq"))
 
-    recording = openephys.locate(record.ephys, recording_index)
+    if spikeglx.is_spikeglx(record.ephys):
+        recording = spikeglx.locate(record.ephys, recording_index)
+        pulses = spikeglx.sync_pulses(recording)
+        source = "recording"
+        _check_one_pulse_per_loop(pulses.times, daq_data)
+    else:
+        recording = openephys.locate(record.ephys, recording_index)
 
-    # The pulses: from the cached file if asked and it checks out, else the recording.
-    pulses = None
-    source = "recording"
-    cached = record.path("metadata").parent / f"{record.session_id}{openephys.CACHED_SUFFIX}"
-    if use_cached and cached.exists():
-        try:
-            pulses = openephys.cached_pulses(cached, recording)
-            source = str(cached)
-        except Exception as exc:                  # noqa: BLE001 — fall back, and say so
-            source = f"recording (cached file rejected: {exc})"
-    if pulses is None:
-        pulses = openephys.sync_pulses(recording)
+        # The pulses: from the cached file if asked and it checks out, else the recording.
+        pulses = None
+        source = "recording"
+        cached = record.path("metadata").parent / f"{record.session_id}{openephys.CACHED_SUFFIX}"
+        if use_cached and cached.exists():
+            try:
+                pulses = openephys.cached_pulses(cached, recording)
+                source = str(cached)
+            except Exception as exc:              # noqa: BLE001 — fall back, and say so
+                source = f"recording (cached file rejected: {exc})"
+        if pulses is None:
+            pulses = openephys.sync_pulses(recording)
 
     mapping = clock.map_ephys_to_daq(pulses.times, daq_data.message_ids,
                                      daq_data.timestamps)
     return outputs.ephys_sync.write(out, recording, pulses, mapping, source=source)
+
+
+def _check_one_pulse_per_loop(pulse_times, daq_data):
+    """
+    Refuse a pulse train that is not one pulse per DAQ loop.
+
+    Pairing pulse *k* with message *k* assumes the DAQ pulses on every loop, as the 1 kHz
+    firmware does. A firmware that pulses on every *n*-th loop would pair each message
+    with the wrong pulse and still look smooth, so the two rates are compared instead.
+    """
+    ids = np.asarray(daq_data.message_ids, dtype=np.int64)
+    times = np.asarray(daq_data.timestamps, dtype=np.float64)
+    if len(ids) < 2 or len(pulse_times) < 2 or times[-1] <= times[0]:
+        return
+    loops_per_s = (ids[-1] - ids[0]) / (times[-1] - times[0])
+    pulses_per_s = 1.0 / float(np.median(np.diff(pulse_times)))
+    if not 0.9 < loops_per_s / pulses_per_s < 1.1:
+        raise ValueError(f"the DAQ ran {loops_per_s:.0f} loops/s but pulsed "
+                         f"{pulses_per_s:.0f} times/s — this firmware does not pulse on "
+                         "every loop, and pairing by count needs it to")
 
 
 # =====================================================================

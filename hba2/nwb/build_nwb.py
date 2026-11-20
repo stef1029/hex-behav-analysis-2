@@ -38,7 +38,7 @@ parameters for that session — for the one that only has ``auto``, say.
 With ``--sort`` and ``--curation`` the file also holds that curation's good units (see
 ``ephys/``)::
 
-    /general/devices/probe, /general/extracellular_ephys/shank0..7
+    /general/devices/probe, /general/extracellular_ephys/shank<n>
     /general/extracellular_ephys/electrodes   every channel: id = Phy's channel index,
                                               rel_x/rel_y in um, open_ephys_channel
     /units                       one row per good unit, id = Phy's cluster ID:
@@ -262,10 +262,11 @@ INT_COLUMNS = frozenset({"correct_port", "chosen_port", "trial_number", "laser_s
 #: Phy's cluster ID.
 #: column name -> description
 UNIT_COLUMNS = {
-    "shank": "the probe shank, 0-7, from the peak channel",
-    "peak_channel": "Phy's index (0-127) of the channel with the largest waveform; also "
+    "shank": "the probe shank, from the peak channel",
+    "peak_channel": "Phy's index of the channel with the largest waveform; also "
                     "the electrodes table's id",
-    "open_ephys_channel": "which recorded channel the peak channel is (CH1..CH128)",
+    "open_ephys_channel": "which recorded channel the peak channel is: CH1..CH128 for "
+                          "Open Ephys, SpikeGLX's channel name for Neuropixels",
     "x_um": "the peak channel's position across the probe (um)",
     "depth_um": "the peak channel's position along its shank, from the tip (um)",
     "n_spikes": "spikes with a DAQ time — the ones in spike_times",

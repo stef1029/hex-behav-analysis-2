@@ -205,9 +205,11 @@ def map_ephys_to_daq(pulse_times, message_ids, daq_times, every_s=1.0):
     sound = np.abs(offsets - local) <= GLITCH_S
     pulse, ephys, daq, counts = pulse[sound], ephys[sound], daq[sound], counts[sound]
 
-    residual = np.abs(np.interp(t_ephys, ephys, daq) - t_daq) * 1000
-    residual_ms_median = float(np.median(residual))
-    residual_ms_p99 = float(np.percentile(residual, 99))
+    # Measured against the line exports use, ends extended: a flat clamp past the first
+    # and last rows would charge up to half a window to the messages there.
+    residual = np.abs(ephys_to_daq(t_ephys, ephys, daq) - t_daq) * 1000
+    residual_ms_median = float(np.nanmedian(residual))
+    residual_ms_p99 = float(np.nanpercentile(residual, 99))
 
     return EphysMap(pulse=pulse.astype(np.int64), t_ephys=ephys, t_daq=daq,
                     n_messages=counts.astype(np.int64), n_matched=int(matched.sum()),

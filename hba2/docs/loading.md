@@ -44,7 +44,7 @@ trials = load_sessions(cohort,                 # a Cohort, never a path
 - **Mistakes are reported.** A name that is not a column raises, listing the ones that
   are. A value nobody has raises, listing the values there are.
 - **What comes back.** One row per trial, every session stacked, unsorted and unfiltered.
-  [The NWB files](nwb-files.md#the-trials-table) lists every column.
+  [The trials table](trials-table.md) lists every column.
 
 To see what there is to choose from:
 

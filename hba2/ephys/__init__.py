@@ -4,7 +4,7 @@ Spike sorts, their curations, and the clean units that come out of them.
 
 The layers, from the probe to a figure::
 
-    <group>/ephys/<Rig_mouse>/            raw Open Ephys. Never touched
+    <group>/ephys/<..._mouse>/            the raw recording: Open Ephys, or SpikeGLX. Never touched
     <session>/processed/ephys_sync.csv    the ephys clock against the DAQ's (postprocessing)
     <session>/ephys_sorts/<sort>/         one sort
     ├── sort.json                         what produced it
@@ -23,6 +23,16 @@ The layers, from the probe to a figure::
 and from there ``build_nwb --batch`` puts the good units into each session's NWB, beside
 the behaviour, where :func:`~hba2.load_units` and
 :func:`~hba2.load_spikes` read them.
+
+**Open Ephys or SpikeGLX, the steps are the same.** Everything from ``phy/`` on reads
+Phy's files and ``ephys_sync.csv``, which mean the same thing for both. Only the sync
+reads the raw recording, and it tells them apart by the folder
+(``postprocessing.sources.spikeglx.is_spikeglx``). A sorter finds a Neuropixels probe the
+same way: ``spikeglx.locate(record.ephys).continuous`` is its ``.ap.bin`` (the folder
+SpikeInterface's ``read_spikeglx`` takes, with ``stream_id`` its ``.stream``). A sort of
+one should write ``sort.json``'s ``probe`` (``description``, ``group``), which
+``build_nwb`` takes the probe's description from, and its ``pipeline.recording_index`` as
+the probe's index.
 
 **Run it as one step**: :func:`process_ephys_cohort` (``pipeline.py``, or
 ``python -m hba2.ephys run``) does all of the below for a cohort, each

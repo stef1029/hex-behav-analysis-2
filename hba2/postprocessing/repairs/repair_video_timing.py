@@ -42,9 +42,22 @@ the lookups that land in them (see ``pose/frame_lookup.py``).
 
 A repair is applied only when **both**
 
-1. the replay reproduces the video's frame count exactly — otherwise ``unexplained``;
+1. the replay reproduces the video's frame count exactly, or does once the chunks that
+   were never written are found (below) — otherwise ``unexplained``;
 2. the check below does not show the repair making the timing significantly worse —
    otherwise ``rejected``, or ``unchecked`` when there is nothing to check it with.
+
+**Chunks never written.** Some videos are shorter than the replay by whole chunks —
+exactly *k* of the 40 — with or without camera drops: a worker failed and its chunk was
+never written, so every frame after it is paired with a time a chunk too early. Which
+chunks are missing is found from the touches (the check below, as a search): every
+choice of *k* chunks is scored, in one pass over the chunks in order, by touches with
+the head at the port less touches with it away, and the best taken. Because the search
+and the check use the same touches, this is only accepted when the search run on
+alternate halves of the touches picks the same chunks both times, **and** the result
+passes the check outright; otherwise the session stays ``unexplained``. It needs pose,
+so it is decided on the run after DeepLabCut, and it needs frame times, so a session
+with no camera pulses cannot be searched here.
 
 The second condition is not a formality. On one 2026 cohort, four early training
 sessions with a handful of camera drops match the replay's length exactly, yet the repair
@@ -259,6 +272,30 @@ def _unexplained(result, manifest, reason, out, dry_run):
     return result
 
 
+def _lost_chunks(record, model, ports, frame_ids, cores, original, n_video):
+    """
+    The chunks never written, by :func:`find_lost_chunks` — ``(indices, "")`` — or
+    ``(None, why not)``. Run on all the touches and on each alternate half; the halves
+    must agree with each other and with the whole.
+    """
+    seen = head_and_touches(record, model, ports)
+    if "why" in seen:
+        return None, f"cannot look for chunks never written: {seen['why']}"
+    t = original["t"].to_numpy(dtype=float)
+    if not np.isfinite(t).any():
+        return None, "cannot look for chunks never written: no frame is timed"
+    chunks = chunk_reads(frame_ids, cores)
+    picks = [find_lost_chunks(chunks, t, n_video, seen["position"], seen["touch_t"][half],
+                              seen["touch_port"][half], seen["ports"])
+             for half in (slice(None), slice(0, None, 2), slice(1, None, 2))]
+    if picks[0] is None:
+        return None, "no set of whole chunks accounts for the missing frames"
+    if not (picks[0] == picks[1] == picks[2]):
+        return None, (f"chunks never written not pinned down: all touches give {picks[0]}, "
+                      f"alternate halves {picks[1]} and {picks[2]}")
+    return picks[0], ""
+
+
 def repair_session(record, model, *, cores=COMPRESSION_CORES, image_dir=None,
                    force=False, dry_run=False, ports=None):
     """
@@ -339,11 +376,26 @@ def repair_session(record, model, *, cores=COMPRESSION_CORES, image_dir=None,
         manifest["replay"] = {"cores": cores, "chunk_size": size,
                               "n_chunks": -(-len(frame_ids) // size),
                               "frames_written": len(positions)}
+        lost = None
         if len(positions) != n_video:
-            return _unexplained(
-                result, manifest,
-                f"replaying the {cores}-core chunking writes {len(positions):,} frames "
-                f"but the video holds {n_video:,}", out, dry_run)
+            mismatch = (f"replaying the {cores}-core chunking writes {len(positions):,} "
+                        f"frames but the video holds {n_video:,}")
+            if len(positions) < n_video:
+                return _unexplained(result, manifest, mismatch, out, dry_run)
+            lost, why = _lost_chunks(record, model, ports, frame_ids, cores, original, n_video)
+            if lost is None and why.startswith("cannot look"):
+                # Nothing to search with yet (no pose, or no frame times): retried every run.
+                manifest.update(status="unchecked", reason=f"{mismatch}; {why}")
+                if not dry_run:
+                    (out / REPAIR_JSON).write_text(_readable_json(manifest))
+                result.status, result.reason = "unchecked", manifest["reason"]
+                return result
+            if lost is None:
+                return _unexplained(result, manifest, f"{mismatch}; {why}", out, dry_run)
+            chunks = chunk_reads(frame_ids, cores)
+            positions = np.concatenate([c for i, c in enumerate(chunks) if i not in lost])
+            manifest["lost_chunks"] = {"chunks": lost, "frames": int(sum(len(chunks[i]) for i in lost)),
+                                       "why": mismatch}
 
         # ---- 5. THE REPAIRED PAIRING ---------------------------------
         # Video frame i came from .bin position positions[i]: that position's frame ID
@@ -368,13 +420,23 @@ def repair_session(record, model, *, cores=COMPRESSION_CORES, image_dir=None,
         result.far_after = check.get("far_fraction_after")
         result.passed = check.get("passed")
 
-        if not check["ran"]:
+        if lost is not None and not (check["ran"] and check["passed"]):
+            status, reason = "unexplained", (
+                f"chunks {lost} look never written, but the result does not pass the check "
+                f"(head far from port {result.far_after if result.far_after is not None else float('nan'):.1%})")
+        elif not check["ran"]:
             status, reason = "unchecked", f"replay matches, but nothing to check it with: {check['why']}"
         elif check["p_worse"] < REJECT_P:
             status, reason = "rejected", (
                 f"replay matches the video's {n_video:,} frames, but the repair puts the head "
                 f"away from the port on {check['touches_broken']} touches and back on it on "
                 f"only {check['touches_fixed']} — not damaged by the chunking bug")
+        elif lost is not None:
+            status, reason = "repaired", (
+                f"chunks {lost} were never written; with them left out the replay "
+                f"reproduces the video's {n_video:,} frames; head far from port "
+                f"{result.far_before:.1%} → {result.far_after:.1%} "
+                f"({check['touches_fixed']} touches fixed, {check['touches_broken']} broken)")
         else:
             status, reason = "repaired", (
                 f"replay reproduces the video's {n_video:,} frames exactly; head far from "
@@ -473,6 +535,12 @@ def replay_chunks(frame_ids, cores=COMPRESSION_CORES):
     position, reads its chunk's length in order, and stops at the end of the file, which
     holds one frame per entry.
     """
+    read = chunk_reads(frame_ids, cores)
+    return np.concatenate(read) if read else np.empty(0, dtype=int)
+
+
+def chunk_reads(frame_ids, cores=COMPRESSION_CORES):
+    """:func:`replay_chunks` one chunk at a time: the ``.bin`` positions each read."""
     n = len(frame_ids)
     size = max(n // cores, MIN_CHUNK)
     read = []
@@ -480,7 +548,53 @@ def replay_chunks(frame_ids, cores=COMPRESSION_CORES):
         seek = int(frame_ids[start])                    # the bug: an ID used as a position
         count = max(0, min(size, n - start, n - seek))  # the chunk, or up to the file's end
         read.append(np.arange(seek, seek + count))
-    return np.concatenate(read) if read else np.empty(0, dtype=int)
+    return read
+
+
+def find_lost_chunks(chunks, t_by_position, n_video, position, touch_t, touch_port, ports):
+    """
+    Which chunks were never written, so that the rest add up to ``n_video`` frames: the
+    choice that puts the head at the touched port on the most touches, less those it
+    puts it away. Returns the chunk indices, or None when no choice adds up.
+
+    One pass over the chunks in order, keeping for each number of frames lost so far the
+    best score and how it was reached: a kept chunk's frames are the next ones in the
+    video, a lost one's are not in it at all, so a kept chunk's score depends only on how
+    much was lost before it.
+    """
+    lengths = np.array([len(c) for c in chunks])
+    target = int(lengths.sum()) - n_video
+    seeks = np.array([c[0] if len(c) else -1 for c in chunks])
+    written_before = np.concatenate([[0], np.cumsum(lengths)[:-1]])
+
+    # Each touch's nearest .bin position by time, and the chunk that read it.
+    r = np.clip(np.searchsorted(t_by_position, touch_t), 1, len(t_by_position) - 1)
+    r = np.where(np.abs(t_by_position[r - 1] - touch_t) < np.abs(t_by_position[r] - touch_t),
+                 r - 1, r)
+    close = np.abs(t_by_position[r] - touch_t) <= MAX_LAG_S
+    chunk = np.searchsorted(seeks, r, side="right") - 1
+    inside = close & (chunk >= 0) & (r - seeks[np.maximum(chunk, 0)]
+                                    < lengths[np.maximum(chunk, 0)])
+
+    def score(c, lost):
+        mine = inside & (chunk == c)
+        frame = written_before[c] - lost + (r[mine] - seeks[c])
+        ok = (frame >= 0) & (frame < n_video)
+        d = np.linalg.norm(position[frame[ok]] - ports[touch_port[mine][ok]], axis=1)
+        d = d[np.isfinite(d)]
+        return int((d <= FAR_PX).sum()) - int((d > FAR_PX).sum())
+
+    best = {0: (0, [])}
+    for c, length in enumerate(lengths):
+        step = {}
+        for lost, (total, chosen) in best.items():
+            kept = total + score(c, lost)
+            if kept > step.get(lost, (-np.inf,))[0]:
+                step[lost] = (kept, chosen)
+            if lost + length <= target and total > step.get(lost + length, (-np.inf,))[0]:
+                step[lost + length] = (total, chosen + [c])
+        best = step
+    return best[target][1] if target in best else None
 
 
 def skipped_runs(positions, n_tracker):
@@ -514,6 +628,30 @@ def _distances(lookup, position, ports, touch_port):
     return distance
 
 
+def head_and_touches(record, model, ports=None):
+    """
+    The head on every video frame and every beam break: a dict of ``key`` (the model's
+    output), ``ports``, ``position``, ``dlc_table``, ``touch_t`` and ``touch_port`` — or
+    of ``why`` there is nothing to judge with.
+    """
+    key = record.dlc_key(model)
+    if key is None:
+        return {"why": f"no output for model '{model}'"}
+    rig = _rig_number(record)
+    tables = approved_ports(ports) if ports is not None else approved_ports()
+    if rig not in tables:
+        return {"why": f"no calibrated port coordinates for rig {rig}"}
+    dlc_table = read_dlc_table(record.dlc[key]["csv"])
+    dlc = dlc_from_table(dlc_table)
+    bearing, method = head_bearing(dlc)
+    events = pd.read_csv(record.path("events"))
+    touched = events[(events["event"] == "sensor_touch") & (events["index"] >= 0)]
+    return {"key": key, "ports": tables[rig], "dlc_table": dlc_table,
+            "position": head_position(dlc, bearing, method),
+            "touch_t": touched["t"].to_numpy(dtype=float),
+            "touch_port": touched["index"].to_numpy(dtype=int)}
+
+
 def check_repair(record, model, before, after, n_video, manifest, image_dir, ports=None):
     """
     At every beam break, how far was the head from that port — as timed before and after?
@@ -524,27 +662,13 @@ def check_repair(record, model, before, after, n_video, manifest, image_dir, por
     a cohort whose rig numbers mean different rigs (the 2026 red rigs are numbered 1 and
     2) has its own.
     """
-    key = record.dlc_key(model)
-    if key is None:
-        return {"ran": False, "why": f"no output for model '{model}'"}
-    rig = _rig_number(record)
-    tables = approved_ports(ports) if ports is not None else approved_ports()
-    if rig not in tables:
-        return {"ran": False, "why": f"no calibrated port coordinates for rig {rig}"}
-    ports = tables[rig]
-
-    # ---- the head on every frame -------------------------------------
-    dlc_table = read_dlc_table(record.dlc[key]["csv"])
-    dlc = dlc_from_table(dlc_table)
-    bearing, method = head_bearing(dlc)
-    position = head_position(dlc, bearing, method)
+    seen = head_and_touches(record, model, ports)
+    if "why" in seen:
+        return {"ran": False, "why": seen["why"]}
+    key, ports, position, dlc_table = seen["key"], seen["ports"], seen["position"], seen["dlc_table"]
+    touch_t, touch_port = seen["touch_t"], seen["touch_port"]
 
     # ---- every beam break, under each timing -------------------------
-    events = pd.read_csv(record.path("events"))
-    touched = events[(events["event"] == "sensor_touch") & (events["index"] >= 0)]
-    touch_t = touched["t"].to_numpy(dtype=float)
-    touch_port = touched["index"].to_numpy(dtype=int)
-
     old = frames_at(before, touch_t, n_video)
     new = frames_at(after, touch_t, n_video)
     d_old = _distances(old, position, ports, touch_port)
@@ -740,6 +864,7 @@ def write_summary(cohort):
             "camera_drops": stored.get("camera_drops"),
             "frames_not_written": stored.get("frames_not_written"),
             "max_shift_frames": stored.get("max_shift_frames"),
+            "lost_chunks": (stored.get("lost_chunks") or {}).get("chunks"),
             "far_fraction_before": check.get("far_fraction_before"),
             "far_fraction_after": check.get("far_fraction_after"),
             "touches_fixed": check.get("touches_fixed"),

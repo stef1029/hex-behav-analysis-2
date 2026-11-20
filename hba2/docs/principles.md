@@ -9,7 +9,9 @@ reason.
 Every stream is put on the DAQ's timestamps, and always by **counting pulses**, never by
 comparing two clocks. The camera sends the DAQ a pulse for each frame it exposes, so
 frame *n* happened at the *n*-th camera pulse. The scales work the same way, and so does
-the Open Ephys board, which receives one pulse per DAQ message.
+the ephys: the Open Ephys board, or SpikeGLX's NI card, receives one pulse per DAQ
+message. A Neuropixels probe is then tied to the NI card by SpikeGLX's 1 Hz sync, which
+both record.
 [`postprocessing/utils/clock.py`](../postprocessing/utils/clock.py) is the only module
 that derives a timestamp. If a time looks wrong, that is the one file to read.
 

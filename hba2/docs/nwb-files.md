@@ -85,60 +85,13 @@ seconds a session.
 
 ## The trials table
 
-`load_sessions` returns this table, with one row per trial. The columns fall into four
-groups.
+Each file's trials table holds one row per trial. `load_sessions` reads it and adds the
+session's facts and its `sessions.csv` columns. Its columns fall into four groups:
 
-**The trial**, from post-processing and the rig:
+- **the trial:** times, ports, outcome and `correct`
+- **the laser:** pulses from the DAQ
+- **the head:** at the trial start and at the response
+- **the session:** its facts and labels
 
-| column | meaning |
-|---|---|
-| `trial` | 0-based index within the session |
-| `start_time`, `stop_time` | the trial-marker window (s, DAQ clock) |
-| `t_response` | when the chosen port's beam broke; NaN if it never did |
-| `response_time` | `t_response - start_time` |
-| `tracker`, `sub_tracker` | the counter the trial was recorded on |
-| `block` | the block of parameters that was active |
-| `trial_number` | the rig's own count within its tracker |
-| `outcome` | `success` / `failure` / `timeout`, as the controller logged it |
-| `correct_port`, `chosen_port` | 0–5; `-1` for none |
-| `correct` | 1 chose the cued port, 0 chose another, **NaN where not defined**: no cue, or no choice (timeouts). A default reading; define your own if a trial type needs it |
-| `timed_out` | 1 where no port was chosen |
-| `stimulus_log`, `event_log`, `details_json` | what the protocol recorded, as JSON, unread |
-
-**The laser**, from the DAQ's pulses rather than the protocol's notes:
-
-| column | meaning |
-|---|---|
-| `laser_stim` | 1 where a pulse belongs to the trial. "Belongs" means it fell between 1 s before the marker and the trial's end, because protocols arm the laser in windows that start before the trial |
-| `n_laser_pulses` | how many |
-| `t_laser_on` | the first one (s) |
-| `laser_offset_s` | `t_laser_on - start_time`, normally negative |
-
-**The head**, from pose. These columns are measured at the trial-start frame unless they
-say `response_`:
-
-| column | meaning |
-|---|---|
-| `head_x`, `head_y` | position (px) |
-| `bearing_deg` | which way the head faced (degrees; 0 = image right, 90 = image up) |
-| `cue_angle_deg` | where the cued port sat relative to straight ahead, in [-180, 180). 0 is straight ahead, **positive is the mouse's left** |
-| `touched_angle_deg` | the same for the port it went on to touch |
-| `angle_port0` … `angle_port5` | the same for every port |
-| `touched_distance_px` | how far the touched port was from the head |
-| `ear_likelihood` | DeepLabCut's confidence in the ears |
-| `frame_lag_s` | that frame's time minus `start_time`. Normally under one frame period; larger means the video has a gap there |
-| `head_speed_px_s`, `turn_rate_deg_s` | how fast the head moved and turned at that frame. A label that jumped reads as a speed no mouse reaches |
-| `response_frame`, `response_frame_lag_s` | the frame showing the response, and how far off it is |
-| `response_distance_px` | head to the touched port at the moment its beam broke. A poke is a few tens of pixels; hundreds means the head was elsewhere |
-| `response_ear_likelihood`, `response_head_speed_px_s`, `response_turn_rate_deg_s` | the same checks at the response |
-
-**The session**, attached to every one of its trials by `load_sessions`:
-
-| column | meaning |
-|---|---|
-| `session_id`, `mouse_id`, `rig`, `protocol`, `phase`, `session_start` | the session's own facts |
-| `_mouse_id`, `_date`, `_n_trials`, `_video_usable`, … | every `_` column of `sessions.csv` |
-| `include`, `stim_position`, … | every column you added to `sessions.csv` |
-| `_nwb` | the file the trial came from, so `load_frames` and friends need nothing else |
-
-`describe_trials(trials)` lists what a loaded table has, with example values.
+[The trials table](trials-table.md) lists every column, with its type and how it shows
+a missing value.
